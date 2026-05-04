@@ -293,6 +293,10 @@ h1{font-size:24px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
           <input type="text" name="ubicacion" placeholder="Ej: Colombia, Cali">
         </div>
         <div>
+          <label>WhatsApp / Teléfono *</label>
+          <input type="tel" name="whatsapp" placeholder="Ej: +57 300 123 4567" required>
+        </div>
+        <div>
           <label>¿Cuáles son tus Midot más bajas o desfasadas?</label>
           <input type="text" name="midot" id="midot-auto" placeholder="Se llenará automáticamente con tus resultados">
         </div>
@@ -313,7 +317,13 @@ h1{font-size:24px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
         <button type="submit" class="send-btn">Enviar solicitud →</button>
       </form>
       <div class="success-msg" id="success-msg">
-        ✅ ¡Solicitud enviada! El Ministerio Pastoreados por El se pondrá en contacto contigo pronto. Shalom.
+        <div style="font-size:1.5rem;margin-bottom:.5rem">🕎</div>
+        <p style="font-size:15px;font-weight:800;color:#1a6b1a;margin-bottom:.5rem">¡Tu solicitud fue recibida!</p>
+        <p style="font-size:13px;color:#2a2a2a;line-height:1.8;margin-bottom:.75rem">
+          Shalom. En breve recibirás un correo de bienvenida del Pastor Juan Pablo Chica Ríos.<br>
+          Mientras tanto, comienza con tu plan semanal — el proceso ya empezó.
+        </p>
+        <p style="font-size:12px;color:#534AB7;font-style:italic">«Sobre toda cosa guardada, guarda tu corazón, porque de él mana la vida.» — Proverbios 4:23</p>
       </div>
     </div>
   </div>
@@ -1475,11 +1485,29 @@ document.addEventListener('DOMContentLoaded', function(){
     form.addEventListener('submit', function(e){
       e.preventDefault();
       const data = new FormData(form);
+      // Add pastor reply info so Formspree sends welcome reply
+      data.append('_replyto', data.get('correo'));
+      data.append('_autoresponse', 
+        'Shalom, ' + (data.get('nombre') || 'hermano/a') + '.\n\n' +
+        'Mi nombre es Juan Pablo Chica Ríos, pastor del Ministerio Pastoreados por El.\n\n' +
+        'Tu solicitud de acompañamiento ha llegado a mis manos y me alegra enormemente que hayas dado este paso. No es casualidad que estés aquí — el Eterno ya estaba trabajando en tu corazón antes de que abrieras este material.\n\n' +
+        'El proceso que estás comenzando es uno de los más honestos y transformadores que puedes hacer: mirarte a ti mismo con la luz de la Torah. Te tomará tiempo. Te confrontará. Y también te liberará.\n\n' +
+        '«Examiname, oh Elohim, y conoce mi corazón; pruébame y conoce mis pensamientos. Ve si hay en mí camino de perversidad, y guíame por el camino eterno.» — Salmos 139:23-24\n\n' +
+        'En los próximos días me pondré en contacto contigo personalmente para conocer tu proceso y asignarte el acompañamiento que necesitas.\n\n' +
+        'Mientras tanto, te animo a comenzar con tu plan semanal. El proceso ya empezó.\n\n' +
+        'Que el Eterno guíe cada paso de tu camino.\n\n' +
+        'Shalom,\n' +
+        'Pastor Juan Pablo Chica Ríos\n' +
+        'Ministerio Pastoreados por El\n' +
+        'iglesiapastoreadosporel@gmail.com\n' +
+        'https://exploratualma-pael.github.io'
+      );
       fetch(form.action, {method:'POST', body:data, headers:{'Accept':'application/json'}})
         .then(r=>{
           if(r.ok){
             form.style.display='none';
             document.getElementById('success-msg').style.display='block';
+            window.scrollTo(0, document.getElementById('success-msg').offsetTop - 20);
           }
         }).catch(()=>{});
     });
