@@ -279,30 +279,30 @@ h1{font-size:24px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
     <div class="mentor-card">
       <h3>📋 Solicitud de acompañamiento</h3>
       <p>Completa los siguientes datos. Un mentor del ministerio se pondrá en contacto contigo.</p>
-      <form class="mentor-form" id="mentor-form" action="https://formspree.io/f/mykoeoaa" method="POST">
+      <form class="mentor-form" id="mentor-form">
         <div>
           <label>Nombre completo *</label>
-          <input type="text" name="nombre" placeholder="Tu nombre completo" required>
+          <input type="text" id="f-nombre" placeholder="Tu nombre completo" required>
         </div>
         <div>
           <label>Correo electrónico *</label>
-          <input type="email" name="correo" placeholder="tu@correo.com" required>
-        </div>
-        <div>
-          <label>País y ciudad</label>
-          <input type="text" name="ubicacion" placeholder="Ej: Colombia, Cali">
+          <input type="email" id="f-correo" placeholder="tu@correo.com" required>
         </div>
         <div>
           <label>WhatsApp / Teléfono *</label>
-          <input type="tel" name="whatsapp" placeholder="Ej: +57 300 123 4567" required>
+          <input type="tel" id="f-whatsapp" placeholder="Ej: +57 300 123 4567" required>
         </div>
         <div>
-          <label>¿Cuáles son tus Midot más bajas o desfasadas?</label>
-          <input type="text" name="midot" id="midot-auto" placeholder="Se llenará automáticamente con tus resultados">
+          <label>País y ciudad</label>
+          <input type="text" id="f-ubicacion" placeholder="Ej: Colombia, Cali">
+        </div>
+        <div>
+          <label>Midot a trabajar (se llena automáticamente)</label>
+          <input type="text" id="midot-auto" placeholder="Completa el test primero para ver tus resultados">
         </div>
         <div>
           <label>¿Estás dispuesto a comprometerte con el plan semanal?</label>
-          <select name="compromiso">
+          <select id="f-compromiso">
             <option value="Sí, me comprometo">Sí, me comprometo con el proceso</option>
             <option value="Necesito más información">Necesito más información primero</option>
             <option value="Lo intentaré">Lo intentaré con ayuda del mentor</option>
@@ -310,11 +310,9 @@ h1{font-size:24px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
         </div>
         <div>
           <label>Mensaje adicional (opcional)</label>
-          <textarea name="mensaje" placeholder="Algo que quieras compartir con tu futuro mentor..."></textarea>
+          <textarea id="f-mensaje" placeholder="Algo que quieras compartir con tu futuro mentor..."></textarea>
         </div>
-        <input type="hidden" name="_subject" value="Nueva solicitud de mentor — Explora tu Alma">
-        <input type="hidden" name="_replyto" value="">
-        <button type="submit" class="send-btn">Enviar solicitud →</button>
+        <button type="button" class="send-btn" id="send-mentor-btn" onclick="enviarSolicitud()">Enviar solicitud →</button>
       </form>
       <div class="success-msg" id="success-msg">
         <div style="font-size:1.5rem;margin-bottom:.5rem">🕎</div>
@@ -1478,50 +1476,62 @@ function showMentorForm(){
   event.target.classList.add('selected');
 }
 
-// Handle Formspree submit - usando delegación para formulario en pantalla oculta
-document.addEventListener('submit', function(e){
-  if(e.target && e.target.id === 'mentor-form'){
-    e.preventDefault();
-    const form = e.target;
-    const data = new FormData(form);
+// Enviar solicitud de mentor via Formspree JSON API
+function enviarSolicitud(){
+  var nombre   = document.getElementById('f-nombre').value.trim();
+  var correo   = document.getElementById('f-correo').value.trim();
+  var whatsapp = document.getElementById('f-whatsapp').value.trim();
+  var ubicacion= document.getElementById('f-ubicacion').value.trim();
+  var midot    = document.getElementById('midot-auto').value.trim();
+  var compromiso = document.getElementById('f-compromiso').value;
+  var mensaje  = document.getElementById('f-mensaje').value.trim();
 
-    // Validación básica
-    if(!data.get('nombre') || !data.get('correo') || !data.get('whatsapp')){
-      alert('Por favor completa los campos obligatorios: Nombre, Correo y WhatsApp.');
-      return;
+  if(!nombre){ alert('Por favor ingresa tu nombre completo.'); return; }
+  if(!correo){ alert('Por favor ingresa tu correo electrónico.'); return; }
+  if(!whatsapp){ alert('Por favor ingresa tu WhatsApp o teléfono.'); return; }
+
+  var btn = document.getElementById('send-mentor-btn');
+  btn.textContent = 'Enviando...';
+  btn.disabled = true;
+
+  var payload = {
+    nombre: nombre,
+    email: correo,
+    whatsapp: whatsapp,
+    ubicacion: ubicacion,
+    midot: midot,
+    compromiso: compromiso,
+    mensaje: mensaje
+  };
+
+  fetch('https://formspree.io/f/mykoeoaa', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r){ return r.json().then(function(d){ return {ok: r.ok, data: d}; }); })
+  .then(function(res){
+    if(res.ok){
+      document.getElementById('mentor-form').style.display = 'none';
+      var msg = document.getElementById('success-msg');
+      msg.style.display = 'block';
+      setTimeout(function(){ msg.scrollIntoView({behavior:'smooth', block:'center'}); }, 100);
+    } else {
+      btn.textContent = 'Enviar solicitud →';
+      btn.disabled = false;
+      var errMsg = (res.data && res.data.errors) ? res.data.errors.map(function(e){return e.message;}).join(', ') : 'Error desconocido';
+      alert('No se pudo enviar: ' + errMsg);
     }
-
-    // Campos especiales Formspree
-    data.append('_replyto', data.get('correo'));
-    data.append('_subject', 'Nueva solicitud de mentor — Explora tu Alma');
-
-    const sendBtn = form.querySelector('.send-btn');
-    if(sendBtn){ sendBtn.textContent = 'Enviando...'; sendBtn.disabled = true; }
-
-    fetch('https://formspree.io/f/mykoeoaa', {
-      method: 'POST',
-      body: data,
-      headers: {'Accept': 'application/json'}
-    })
-    .then(function(r){
-      if(r.ok){
-        form.style.display = 'none';
-        const msg = document.getElementById('success-msg');
-        if(msg){
-          msg.style.display = 'block';
-          setTimeout(function(){ msg.scrollIntoView({behavior:'smooth', block:'center'}); }, 100);
-        }
-      } else {
-        if(sendBtn){ sendBtn.textContent = 'Enviar solicitud →'; sendBtn.disabled = false; }
-        alert('Hubo un problema al enviar. Por favor intenta de nuevo.');
-      }
-    })
-    .catch(function(){
-      if(sendBtn){ sendBtn.textContent = 'Enviar solicitud →'; sendBtn.disabled = false; }
-      alert('Error de conexión. Verifica tu internet e intenta de nuevo.');
-    });
-  }
-});
+  })
+  .catch(function(err){
+    btn.textContent = 'Enviar solicitud →';
+    btn.disabled = false;
+    alert('Error de conexión. Verifica tu internet e intenta de nuevo.');
+  });
+}
 
 function resetAll(){Object.keys(results).forEach(function(k){delete results[k];});renderTiles();showScreen('s-home');}
 function showScreen(id){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
