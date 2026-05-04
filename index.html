@@ -1478,38 +1478,47 @@ function showMentorForm(){
   event.target.classList.add('selected');
 }
 
-// Handle Formspree submit
-document.addEventListener('DOMContentLoaded', function(){
-  const form = document.getElementById('mentor-form');
-  if(form){
-    form.addEventListener('submit', function(e){
-      e.preventDefault();
-      const data = new FormData(form);
-      // Add pastor reply info so Formspree sends welcome reply
-      data.append('_replyto', data.get('correo'));
-      data.append('_autoresponse', 
-        'Shalom, ' + (data.get('nombre') || 'hermano/a') + '.\n\n' +
-        'Mi nombre es Juan Pablo Chica Ríos, pastor del Ministerio Pastoreados por El.\n\n' +
-        'Tu solicitud de acompañamiento ha llegado a mis manos y me alegra enormemente que hayas dado este paso. No es casualidad que estés aquí — el Eterno ya estaba trabajando en tu corazón antes de que abrieras este material.\n\n' +
-        'El proceso que estás comenzando es uno de los más honestos y transformadores que puedes hacer: mirarte a ti mismo con la luz de la Torah. Te tomará tiempo. Te confrontará. Y también te liberará.\n\n' +
-        '«Examiname, oh Elohim, y conoce mi corazón; pruébame y conoce mis pensamientos. Ve si hay en mí camino de perversidad, y guíame por el camino eterno.» — Salmos 139:23-24\n\n' +
-        'En los próximos días me pondré en contacto contigo personalmente para conocer tu proceso y asignarte el acompañamiento que necesitas.\n\n' +
-        'Mientras tanto, te animo a comenzar con tu plan semanal. El proceso ya empezó.\n\n' +
-        'Que el Eterno guíe cada paso de tu camino.\n\n' +
-        'Shalom,\n' +
-        'Pastor Juan Pablo Chica Ríos\n' +
-        'Ministerio Pastoreados por El\n' +
-        'iglesiapastoreadosporel@gmail.com\n' +
-        'https://exploratualma-pael.github.io'
-      );
-      fetch(form.action, {method:'POST', body:data, headers:{'Accept':'application/json'}})
-        .then(r=>{
-          if(r.ok){
-            form.style.display='none';
-            document.getElementById('success-msg').style.display='block';
-            window.scrollTo(0, document.getElementById('success-msg').offsetTop - 20);
-          }
-        }).catch(()=>{});
+// Handle Formspree submit - usando delegación para formulario en pantalla oculta
+document.addEventListener('submit', function(e){
+  if(e.target && e.target.id === 'mentor-form'){
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+
+    // Validación básica
+    if(!data.get('nombre') || !data.get('correo') || !data.get('whatsapp')){
+      alert('Por favor completa los campos obligatorios: Nombre, Correo y WhatsApp.');
+      return;
+    }
+
+    // Campos especiales Formspree
+    data.append('_replyto', data.get('correo'));
+    data.append('_subject', 'Nueva solicitud de mentor — Explora tu Alma');
+
+    const sendBtn = form.querySelector('.send-btn');
+    if(sendBtn){ sendBtn.textContent = 'Enviando...'; sendBtn.disabled = true; }
+
+    fetch('https://formspree.io/f/mykoeoaa', {
+      method: 'POST',
+      body: data,
+      headers: {'Accept': 'application/json'}
+    })
+    .then(function(r){
+      if(r.ok){
+        form.style.display = 'none';
+        const msg = document.getElementById('success-msg');
+        if(msg){
+          msg.style.display = 'block';
+          setTimeout(function(){ msg.scrollIntoView({behavior:'smooth', block:'center'}); }, 100);
+        }
+      } else {
+        if(sendBtn){ sendBtn.textContent = 'Enviar solicitud →'; sendBtn.disabled = false; }
+        alert('Hubo un problema al enviar. Por favor intenta de nuevo.');
+      }
+    })
+    .catch(function(){
+      if(sendBtn){ sendBtn.textContent = 'Enviar solicitud →'; sendBtn.disabled = false; }
+      alert('Error de conexión. Verifica tu internet e intenta de nuevo.');
     });
   }
 });
