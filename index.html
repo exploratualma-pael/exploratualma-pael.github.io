@@ -131,6 +131,72 @@ h1{font-size:24px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 .site-footer a{color:#AFA9EC;text-decoration:none}
 .site-footer .cc{margin-top:.5rem;font-size:10.5px;color:#6a6a88}
 
+
+/* PDF PRINT STYLES */
+@media print {
+  body * { visibility: hidden !important; }
+  #pdf-content, #pdf-content * { visibility: visible !important; }
+  #pdf-content { position: fixed; top: 0; left: 0; width: 100%; }
+  .pdf-no-print { display: none !important; }
+}
+.pdf-btn {
+  background: #534AB7;
+  color: #fff;
+  border: none;
+  border-radius: 99px;
+  padding: .85rem 1.4rem;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  margin-top: .75rem;
+}
+.pdf-btn:hover { background: #3C3489; }
+#pdf-content {
+  display: none;
+  font-family: Arial, sans-serif;
+  padding: 0;
+  color: #1a1a1a;
+}
+.pdf-header {
+  background: #534AB7;
+  color: #fff;
+  padding: 1.2rem 1.5rem;
+  text-align: center;
+}
+.pdf-header h1 { font-size: 20px; margin: 0 0 .2rem; }
+.pdf-header p { font-size: 12px; margin: 0; opacity: .85; }
+.pdf-body { padding: 1.2rem 1.5rem; }
+.pdf-mida-block {
+  margin-bottom: 1.5rem;
+  page-break-inside: avoid;
+  border: 1px solid #e0ddd5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pdf-mida-header {
+  padding: .7rem 1rem;
+  font-weight: 700;
+  font-size: 14px;
+}
+.pdf-mida-header.low { background: #FCEBEB; color: #A32D2D; }
+.pdf-mida-header.exc { background: #FBEAF0; color: #993556; }
+.pdf-day {
+  padding: .6rem 1rem;
+  border-top: 1px solid #eee;
+  font-size: 12px;
+}
+.pdf-day strong { color: #534AB7; display: block; margin-bottom: .2rem; }
+.pdf-day .verse { color: #534AB7; font-style: italic; font-size: 11px; margin-top: .3rem; border-left: 2px solid #AFA9EC; padding-left: .5rem; }
+.pdf-footer {
+  border-top: 2px solid #534AB7;
+  padding: 1rem 1.5rem;
+  text-align: center;
+  font-size: 11px;
+  color: #666;
+  margin-top: 1rem;
+}
+
 </style>
 </head>
 <body>
@@ -253,6 +319,7 @@ h1{font-size:24px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
     <button class="btn-sm" onclick="resetAll()">Reiniciar todo</button>
     <button class="btn-sm" onclick="printPlan()">🖨 Imprimir plan</button>
     <button class="btn-sm" style="background:#534AB7;color:#fff;font-weight:700" onclick="goMentor()">🤝 Solicitar mentor</button>
+    <button class="btn-sm" style="background:#2a7a2a;color:#fff;font-weight:700" onclick="descargarPDF()">📄 Descargar mi plan en PDF</button>
   </div>
 </div>
 
@@ -361,12 +428,38 @@ h1{font-size:24px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
           </p>
         </div>
 
+        <!-- BOTÓN PDF EN MENTOR -->
+        <div style="margin-top:1.2rem">
+          <button class="pdf-btn" onclick="descargarPDF()">
+            📄 Descargar mi plan espiritual completo en PDF
+          </button>
+          <p style="font-size:11px;color:#888;text-align:center;margin-top:.5rem">
+            Guarda o imprime tu plan de 7 días para cada Midá que necesita trabajo.
+          </p>
+        </div>
+
       </div>
     </div>
   </div>
 
   <div style="margin-top:1rem;text-align:center">
     <button class="btn-sm" onclick="showScreen('s-results')">← Volver a mis resultados</button>
+  </div>
+</div>
+
+
+<!-- PDF CONTENT (hidden, shown on print) -->
+<div id="pdf-content">
+  <div class="pdf-header">
+    <h1>🕎 Explora tu Alma — Mi Plan Espiritual</h1>
+    <p>Ministerio Pastoreados por El &nbsp;·&nbsp; iglesiapastoreadosporel@gmail.com</p>
+  </div>
+  <div class="pdf-body" id="pdf-body-content">
+    <!-- filled by JS -->
+  </div>
+  <div class="pdf-footer">
+    <strong>Pastor Juan Pablo Chica Ríos</strong> &nbsp;·&nbsp; Ministerio Pastoreados por El<br>
+    © 2026 — Uso libre para fines espirituales y educativos sin fines de lucro. CC BY-NC 4.0
   </div>
 </div>
 
@@ -1570,6 +1663,92 @@ function enviarSolicitud(){
     btn.disabled = false;
     alert('Error de conexión. Verifica tu internet e intenta de nuevo.');
   });
+}
+
+
+// ── DESCARGAR PDF ────────────────────────────────────────────────────
+function descargarPDF(){
+  var DAYS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Shabat'];
+  var toWork = Object.entries(results).filter(function(e){
+    return e[1].status === 'low' || e[1].status === 'excess';
+  });
+
+  if(toWork.length === 0){
+    alert('Completa al menos una Midá para generar tu plan.');
+    return;
+  }
+
+  var nombre = document.getElementById('f-nombre') ? document.getElementById('f-nombre').value.trim() : '';
+  var hoy = new Date().toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'});
+
+  var html = '';
+
+  // Nombre y fecha
+  if(nombre){
+    html += '<div style="background:#f5f2ff;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;">';
+    html += '<strong>Participante:</strong> ' + nombre + '&nbsp;&nbsp;|&nbsp;&nbsp;<strong>Fecha:</strong> ' + hoy;
+    html += '</div>';
+  } else {
+    html += '<div style="background:#f5f2ff;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;">';
+    html += '<strong>Fecha:</strong> ' + hoy;
+    html += '</div>';
+  }
+
+  // Resumen
+  html += '<div style="margin-bottom:1rem;font-size:13px;color:#555;">';
+  html += '<strong>Midot que requieren trabajo: ' + toWork.length + '</strong>';
+  html += '</div>';
+
+  // Plan por cada Midá
+  toWork.forEach(function(entry){
+    var idx = parseInt(entry[0]);
+    var res = entry[1];
+    var mida = MD[idx];
+    var isLow = res.status === 'low';
+    var statusLabel = isLow ? 'BAJA — Plan de desarrollo' : 'DESFASADA — Plan de equilibrio';
+    var days = null;
+    if(typeof WEEKLY_PLANS !== 'undefined' && WEEKLY_PLANS[idx]){
+      days = isLow ? WEEKLY_PLANS[idx].low : WEEKLY_PLANS[idx].exc;
+    }
+
+    html += '<div class="pdf-mida-block">';
+    html += '<div class="pdf-mida-header ' + (isLow ? 'low' : 'exc') + '">';
+    html += (idx+1) + '. ' + mida.n + ' &nbsp;·&nbsp; ' + statusLabel;
+    html += ' &nbsp;·&nbsp; Promedio: ' + res.avg.toFixed(1);
+    html += '</div>';
+
+    // Definition
+    html += '<div style="padding:.6rem 1rem;font-size:12px;color:#555;border-top:1px solid #eee;font-style:italic;">' + mida.d + '</div>';
+
+    if(days && days.length === 7){
+      days.forEach(function(day, di){
+        var taskClean = day.task.replace(/<[^>]+>/g,'').trim();
+        var verseClean = day.verse ? day.verse.replace(/<[^>]+>/g,'').trim() : '';
+        var isShabbat = di === 6;
+        html += '<div class="pdf-day" style="' + (isShabbat ? 'background:#f5f2ff;' : '') + '">';
+        html += '<strong>' + DAYS[di] + '</strong>';
+        html += taskClean;
+        if(verseClean){
+          html += '<div class="verse">«' + verseClean + '»</div>';
+        }
+        html += '</div>';
+      });
+    } else {
+      // Fallback to pb/pa
+      var plan = isLow ? mida.pb : mida.pa;
+      var vers = isLow ? mida.vb : mida.va;
+      html += '<div class="pdf-day"><strong>Plan semanal</strong>' + plan + '</div>';
+      if(vers){ html += '<div class="pdf-day"><div class="verse">«' + vers + '»</div></div>'; }
+    }
+
+    html += '</div>';
+  });
+
+  // Fill and print
+  document.getElementById('pdf-body-content').innerHTML = html;
+  document.getElementById('pdf-content').style.display = 'block';
+  window.print();
+  document.getElementById('pdf-content').style.display = 'none';
 }
 
 function resetAll(){Object.keys(results).forEach(function(k){delete results[k];});renderTiles();showScreen('s-home');}
