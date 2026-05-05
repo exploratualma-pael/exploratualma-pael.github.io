@@ -94,10 +94,25 @@ h1{font-size:24px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 .mida-status-exc{display:inline-block;font-size:10px;font-weight:700;background:#FBEAF0;color:#993556;border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:middle}
 .print-only{display:none}
 @media print{
-  .tab-row,.btn-sm,.btn-results,.home-grid,.home-stats,.mida-tile,.nav-row,.pb-wrap,.pb-lbl{display:none!important}
-  .print-only{display:block}
-  body{background:#fff}
-  .plan-week{break-inside:avoid;box-shadow:none;border:1px solid #ccc}
+  /* When printing normally (Imprimir plan) */
+  body.printing-results #s-results { display: block !important; }
+  body.printing-results .screen:not(#s-results) { display: none !important; }
+  body.printing-results .tab-row,
+  body.printing-results .btn-sm,
+  body.printing-results .btn-results,
+  body.printing-results .home-grid,
+  body.printing-results .home-stats,
+  body.printing-results .mida-tile,
+  body.printing-results .nav-row,
+  body.printing-results .pb-wrap,
+  body.printing-results .pb-lbl { display:none!important }
+  body.printing-results { background:#fff }
+  body.printing-results .plan-week { break-inside:avoid;box-shadow:none;border:1px solid #ccc }
+  /* When printing PDF plan */
+  body.printing-pdf #pdf-content { display: block !important; }
+  body.printing-pdf .screen,
+  body.printing-pdf .site-footer { display: none !important; }
+  body.printing-pdf { background: #fff; }
 }
 
 /* COVER SCREEN */
@@ -134,10 +149,8 @@ h1{font-size:24px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
 
 /* PDF PRINT STYLES */
 @media print {
-  body * { visibility: hidden !important; }
-  #pdf-content, #pdf-content * { visibility: visible !important; }
-  #pdf-content { position: fixed; top: 0; left: 0; width: 100%; }
-  .pdf-no-print { display: none !important; }
+  /* Hide everything except what we want to print */
+  .pdf-print-hide { display: none !important; }
 }
 .pdf-btn {
   background: #534AB7;
@@ -1582,7 +1595,9 @@ function switchTab(tab) {
 
 function printPlan() {
   switchTab('plan');
+  document.body.classList.add('printing-results');
   window.print();
+  document.body.classList.remove('printing-results');
 }
 
 
@@ -1748,12 +1763,21 @@ function descargarPDF(){
     alert('Error al generar el PDF. Recarga la página e intenta de nuevo.');
     return;
   }
+  // Prevent duplicates - clear first
+  bodyEl.innerHTML = '';
   bodyEl.innerHTML = html;
+  
+  // Use body class to control print CSS
+  document.body.classList.add('printing-pdf');
   pdfEl.style.display = 'block';
+  
   setTimeout(function(){
     window.print();
-    pdfEl.style.display = 'none';
-  }, 300);
+    setTimeout(function(){
+      pdfEl.style.display = 'none';
+      document.body.classList.remove('printing-pdf');
+    }, 500);
+  }, 400);
 }
 function resetAll(){Object.keys(results).forEach(function(k){delete results[k];});renderTiles();showScreen('s-home');}
 function showScreen(id){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
