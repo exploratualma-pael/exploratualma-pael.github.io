@@ -1669,34 +1669,29 @@ function enviarSolicitud(){
 // ── DESCARGAR PDF ────────────────────────────────────────────────────
 function descargarPDF(){
   var DAYS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Shabat'];
+
+  // Collect all results that need work
   var toWork = Object.entries(results).filter(function(e){
     return e[1].status === 'low' || e[1].status === 'excess';
   });
 
   if(toWork.length === 0){
-    alert('Completa al menos una Midá para generar tu plan.');
+    alert('No hay Midot con diagnóstico aún. Completa al menos una Midá primero.');
     return;
   }
 
-  var nombre = document.getElementById('f-nombre') ? document.getElementById('f-nombre').value.trim() : '';
+  var nombre = '';
+  var el = document.getElementById('f-nombre');
+  if(el) nombre = el.value.trim();
   var hoy = new Date().toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'});
 
   var html = '';
 
   // Nombre y fecha
-  if(nombre){
-    html += '<div style="background:#f5f2ff;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;">';
-    html += '<strong>Participante:</strong> ' + nombre + '&nbsp;&nbsp;|&nbsp;&nbsp;<strong>Fecha:</strong> ' + hoy;
-    html += '</div>';
-  } else {
-    html += '<div style="background:#f5f2ff;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;">';
-    html += '<strong>Fecha:</strong> ' + hoy;
-    html += '</div>';
-  }
-
-  // Resumen
-  html += '<div style="margin-bottom:1rem;font-size:13px;color:#555;">';
-  html += '<strong>Midot que requieren trabajo: ' + toWork.length + '</strong>';
+  html += '<div style="background:#f5f2ff;border-radius:8px;padding:.75rem 1rem;margin-bottom:1.2rem;font-size:13px;">';
+  if(nombre) html += '<strong>Participante:</strong> ' + nombre + ' &nbsp;|&nbsp; ';
+  html += '<strong>Fecha:</strong> ' + hoy + ' &nbsp;|&nbsp; ';
+  html += '<strong>Midot en trabajo:</strong> ' + toWork.length;
   html += '</div>';
 
   // Plan por cada Midá
@@ -1706,51 +1701,60 @@ function descargarPDF(){
     var mida = MD[idx];
     var isLow = res.status === 'low';
     var statusLabel = isLow ? 'BAJA — Plan de desarrollo' : 'DESFASADA — Plan de equilibrio';
-    var days = null;
-    if(typeof WEEKLY_PLANS !== 'undefined' && WEEKLY_PLANS[idx]){
-      days = isLow ? WEEKLY_PLANS[idx].low : WEEKLY_PLANS[idx].exc;
-    }
 
     html += '<div class="pdf-mida-block">';
     html += '<div class="pdf-mida-header ' + (isLow ? 'low' : 'exc') + '">';
-    html += (idx+1) + '. ' + mida.n + ' &nbsp;·&nbsp; ' + statusLabel;
-    html += ' &nbsp;·&nbsp; Promedio: ' + res.avg.toFixed(1);
+    html += (idx+1) + '. ' + mida.n;
+    html += '<span style="float:right;font-weight:400;font-size:12px">' + statusLabel + ' · Prom: ' + res.avg.toFixed(1) + '</span>';
     html += '</div>';
+    html += '<div style="padding:.5rem 1rem;font-size:11px;color:#666;border-top:1px solid #eee;font-style:italic;">' + mida.d + '</div>';
 
-    // Definition
-    html += '<div style="padding:.6rem 1rem;font-size:12px;color:#555;border-top:1px solid #eee;font-style:italic;">' + mida.d + '</div>';
+    // Try WEEKLY_PLANS first
+    var days = null;
+    if(typeof WEEKLY_PLANS !== 'undefined' && WEEKLY_PLANS[idx] && WEEKLY_PLANS[idx][isLow ? 'low' : 'exc']){
+      days = WEEKLY_PLANS[idx][isLow ? 'low' : 'exc'];
+    }
 
     if(days && days.length === 7){
       days.forEach(function(day, di){
-        var taskClean = day.task.replace(/<[^>]+>/g,'').trim();
+        var taskClean = day.task ? day.task.replace(/<[^>]+>/g,'').trim() : '';
         var verseClean = day.verse ? day.verse.replace(/<[^>]+>/g,'').trim() : '';
         var isShabbat = di === 6;
-        html += '<div class="pdf-day" style="' + (isShabbat ? 'background:#f5f2ff;' : '') + '">';
-        html += '<strong>' + DAYS[di] + '</strong>';
+        html += '<div class="pdf-day" style="' + (isShabbat ? 'background:#f0eeff;' : '') + '">';
+        html += '<strong>' + DAYS[di] + (isShabbat ? ' 🕯' : '') + '</strong>';
         html += taskClean;
-        if(verseClean){
-          html += '<div class="verse">«' + verseClean + '»</div>';
-        }
+        if(verseClean) html += '<div class="verse">' + verseClean + '</div>';
         html += '</div>';
       });
     } else {
-      // Fallback to pb/pa
+      // Fallback: use pb/pa and vb/va from MD
       var plan = isLow ? mida.pb : mida.pa;
       var vers = isLow ? mida.vb : mida.va;
-      html += '<div class="pdf-day"><strong>Plan semanal</strong>' + plan + '</div>';
-      if(vers){ html += '<div class="pdf-day"><div class="verse">«' + vers + '»</div></div>'; }
+      if(plan){
+        html += '<div class="pdf-day"><strong>Plan de la semana</strong>' + plan + '</div>';
+      }
+      if(vers){
+        html += '<div class="pdf-day"><div class="verse">' + vers + '</div></div>';
+      }
     }
 
     html += '</div>';
   });
 
-  // Fill and print
-  document.getElementById('pdf-body-content').innerHTML = html;
-  document.getElementById('pdf-content').style.display = 'block';
-  window.print();
-  document.getElementById('pdf-content').style.display = 'none';
+  // Insert and print
+  var bodyEl = document.getElementById('pdf-body-content');
+  var pdfEl = document.getElementById('pdf-content');
+  if(!bodyEl || !pdfEl){
+    alert('Error al generar el PDF. Recarga la página e intenta de nuevo.');
+    return;
+  }
+  bodyEl.innerHTML = html;
+  pdfEl.style.display = 'block';
+  setTimeout(function(){
+    window.print();
+    pdfEl.style.display = 'none';
+  }, 300);
 }
-
 function resetAll(){Object.keys(results).forEach(function(k){delete results[k];});renderTiles();showScreen('s-home');}
 function showScreen(id){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
 
